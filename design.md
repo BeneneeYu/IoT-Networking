@@ -22,6 +22,10 @@ The system consists of:
 - Refrigerator, grocery server, health server, client, and server components.
 - Custom application and transport protocols for communication between components.
 
+### Collect end-to-end latency data
+
+Create field `ts` for message, when server receive a message, get the time for receving it by get the time difference between time now and `ts`.
+
 ### Samples
 - applnlayer/ApplnMessageTypes: define data classes and printing function.
 - applnlayer/CustomApplnProtocol: base class of client/server, implements functions to send/receive application objects, send/receive request/response based on network layer.
@@ -62,9 +66,7 @@ recv_response
 ---- socket.recv (say 10.0.0.5:5555)
 ```
 
-### Grocery Order
-
-### grocery_server
+### Grocery Server
 
 - Instantiate a CustomApplnProtocol to act as server, continuously listening to requests and respond (needs IP and Port).
 
@@ -84,6 +86,14 @@ grocery_obj (ApplnProtoObj)
 
 ## Data Flows
 
+- Every node append it's host name at front for 
+
+- network layer: append addr, dst IP,
+
+- transport layer: append ack
+
+- ZMQ packet: identity, null, payload
+
 ### **Client**
 
 **appln_obj.send_order**=>**xport_obj.send_appln_smg**=>**send_segment**=>**nw_obj.send_packet**=>**socket.send**
@@ -91,12 +101,44 @@ grocery_obj (ApplnProtoObj)
 ### **Server**
 
 **appln_obj.recv_request**=>**xport_obj.recv_appln_msg**=>**recv_segment**=>**nw_obj.recv_packet**=>**socket.recv**
+
 ## Unit Definitions
 - Segments: A segment is the unit of end-to-end transmission in the TCP protocol. A segment consists of a TCP header followed by application data. A segment is transmitted by encapsulation inside an IP datagram.
 - IP Datagram: The unit of end-to-end transmission in the IP protocol.
 - Packet: The unit of data passed across the interface between the internet layer and the link layer.
 - Frame: The unit of transmission in a link layer protocol.
 - data=>segment=>packet=>frame
+
+## Flatbuffers
+
+### Data structure
+
+Struct, Table, root_type, union. Flatbuffers are used for defining message schemas, including enums for message types.
+
+### Use steps
+
+1. Use CMake to compile FlatBuffers and generate flatc
+2. Define data structure using Schema, use flatc to compile Schema and get source code
+3. Use API of source code to manipulate data
+
+two types of message types: ORDER and HEALTH (just like GET, PUT etc in http)
+
+ORDER - grocery_server - Order Placed
+Health Status - health_server - You Are Healthy
+
+- Extend the message formats as required by the writeup
+- Define Flatbuffer schema and generated serialization code for the schema
+- JSON dictionary for the same message format
+
+Pass specific type message parameters to functions directly, do not try to wrap.
+Wrapping is the implementation in serialization/deserialization.
+
+### Schema
+
+1. Define enums for the message type in a separate fbs file.
+2. Include that fbs file in three separate files,
+3. One each for the grocery order, health status and response table definitions where each of those are their own root types.
+4. All of them use the same namespace. Then give all these files as arguments to a single invocation of flatc --python.
 
 ## Implementation Details
 - Collection of end-to-end latency data.
